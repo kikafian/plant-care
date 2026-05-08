@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Plants">
+  <meta name="theme-color" content="#0f1a0f">
+  <title>Plant Journal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --bg: #0d180d;
+      --surface: rgba(255,255,255,0.04);
+      --surface-hover: rgba(255,255,255,0.07);
+      --border: rgba(255,255,255,0.07);
+      --text: #c8d8a8;
+      --text-dim: #6a7a58;
+      --text-faint: #3a4a30;
+      --accent: #7ab050;
+      --ok: #70b850;
+      --soon: #d4a840;
+      --overdue: #d46050;
+      --unknown: #5a6a50;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      overscroll-behavior: none;
+    }
+
+    body {
+      background-image:
+        radial-gradient(ellipse 80% 60% at 20% 0%, rgba(40,80,20,0.25) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(20,50,10,0.2) 0%, transparent 60%);
+      min-height: 100vh;
+    }
+
+    /* dot texture */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(120,180,80,0.06) 1px, transparent 1px);
+      background-size: 24px 24px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 0 0 80px; }
+
+    /* ── HEADER ── */
+    header {
+      padding: 52px 24px 24px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .date-label {
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 36px;
+      font-weight: 400;
+      color: #d8e8b8;
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+    }
+
+    h1 em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .subtitle {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 6px;
+      letter-spacing: 1px;
+    }
+
+    /* ── SUMMARY BANNER ── */
+    .banner {
+      margin: 0 16px 16px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .banner.ok    { background: rgba(80,160,40,0.1); border: 1px solid rgba(80,160,40,0.2); color: var(--ok); }
+    .banner.warn  { background: rgba(200,80,60,0.1); border: 1px solid rgba(200,80,60,0.2); color: var(--overdue); }
+    .banner.soon  { background: rgba(200,160,40,0.1); border: 1px solid rgba(200,160,40,0.2); color: var(--soon); }
+
+    /* ── SORT BAR ── */
+    .sort-bar {
+      display: flex;
+      gap: 6px;
+      padding: 0 16px;
+      margin-bottom: 12px;
+      justify-content: flex-end;
+    }
+
+    .sort-btn {
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-dim);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.3px;
+    }
+    .sort-btn.active {
+      border-color: var(--accent);
+      background: rgba(120,180,60,0.12);
+      color: var(--accent);
+    }
+
+    /* ── PLANT LIST ── */
+    .list { padding: 0 16px; display: flex; flex-direction: column; gap: 8px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 14px 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: background 0.15s, border-color 0.15s;
+      animation: slideIn 0.3s ease both;
+    }
+
+    .card:active { background: var(--surface-hover); }
+    .card.overdue { border-color: rgba(200,80,60,0.25); }
+    .card.soon    { border-color: rgba(200,160,40,0.2); }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .emoji { font-size: 24px; width: 30px; text-align: center; flex-shrink: 0; }
+
+    .info { flex: 1; min-width: 0; }
+
+    .plant-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 15px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .plant-latin {
+      font-size: 10px;
+      color: var(--text-faint);
+      font-style: italic;
+      margin-top: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 7px;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 3px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 2px;
+      overflow: hidden;
+      max-width: 100px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+
+    .status-label {
+      font-size: 10px;
+      letter-spacing: 0.3px;
+      flex-shrink: 0;
+    }
+
+    .last-watered {
+      font-size: 9px;
+      color: var(--text-faint);
+      margin-top: 3px;
+    }
+
+    /* ── WATER BUTTON ── */
+    .water-btn {
+      flex-shrink: 0;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid rgba(120,180,60,0.3);
+      background: rgba(80,130,30,0.15);
+      color: var(--ok);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .water-btn.overdue {
+      border-color: rgba(200,80,60,0.4);
+      background: rgba(160,50,30,0.15);
+      color: var(--overdue);
+    }
+
+    .water-btn:active {
+      transform: scale(0.92);
+      background: rgba(80,130,30,0.3);
+    }
+
+    .water-btn.watered {
+      animation: pulse 0.4s ease;
+    }
+
+    @keyframes pulse {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.25); }
+      100% { transform: scale(1); }
+    }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #2a4a1a;
+      color: #a8d080;
+      padding: 10px 22px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-family: 'Playfair Display', serif;
+      border: 1px solid rgba(120,180,60,0.3);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.25s, transform 0.25s;
+      white-space: nowrap;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── INSTALL HINT ── */
+    .install-hint {
+      margin: 24px 16px 0;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px dashed rgba(255,255,255,0.08);
+      border-radius: 10px;
+      font-size: 10px;
+      color: var(--text-faint);
+      line-height: 1.7;
+      text-align: center;
+    }
+
+    .install-hint strong { color: var(--text-dim); }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="date-label" id="date-label"></div>
+    <h1>Plant <em>Journal</em></h1>
+    <div class="subtitle">13 plants · watering tracker</div>
+  </header>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="sort-bar">
+    <button class="sort-btn active" id="sort-urgency" onclick="setSort('urgency')">By urgency</button>
+    <button class="sort-btn" id="sort-name" onclick="setSort('name')">A–Z</button>
+  </div>
+
+  <div class="list" id="list"></div>
+
+  <div class="install-hint">
+    💡 <strong>Add to home screen:</strong> tap Chrome's menu (⋮) → "Add to Home screen" to use this like an app
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+const PLANTS = [
+  { id:1,  name:"Dracaena",              latin:"Dracaena fragrans",           emoji:"🌿", days:8  },
+  { id:2,  name:"Spider Plant",          latin:"Chlorophytum comosum",        emoji:"🪴", days:8  },
+  { id:3,  name:"Golden Pothos",         latin:"Epipremnum aureum",           emoji:"🍃", days:9  },
+  { id:4,  name:"Mistletoe Cactus",      latin:"Rhipsalis baccifera",         emoji:"🌵", days:18 },
+  { id:5,  name:"Chinese Money Plant",   latin:"Pilea peperomioides",         emoji:"🌱", days:10 },
+  { id:6,  name:"Peperomia",             latin:"Peperomia caperata",          emoji:"🫚", days:12 },
+  { id:7,  name:"Ficus Bonsai",          latin:"Ficus microcarpa",            emoji:"🎋", days:10 },
+  { id:8,  name:"Parlour Palm",          latin:"Chamaedorea elegans",         emoji:"🌴", days:9  },
+  { id:9,  name:"Heartleaf Philodendron",latin:"Philodendron hederaceum",     emoji:"💚", days:8  },
+  { id:10, name:"Monstera",              latin:"Monstera deliciosa",          emoji:"🌿", days:8  },
+  { id:11, name:"Snake Plant (Dwarf)",   latin:"Dracaena trifasciata 'Hahnii'",emoji:"🗡️",days:17 },
+  { id:12, name:"Cylindrical Snake Plant",latin:"Dracaena angolensis",        emoji:"🎍", days:17 },
+  { id:13, name:"Philodendron (Aroid)",  latin:"Philodendron sp.",            emoji:"🍀", days:8  },
+];
+
+const KEY = "plant-watering-v1";
+let log = {};
+let sortMode = "urgency";
+let toastTimer = null;
+
+function loadLog() {
+  try { log = JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { log = {}; }
+}
+
+function saveLog() {
+  localStorage.setItem(KEY, JSON.stringify(log));
+}
+
+function today() {
+  return new Date().toISOString().split("T")[0];
+}
+
+function daysSince(dateStr) {
+  if (!dateStr) return null;
+  const ms = new Date().setHours(0,0,0,0) - new Date(dateStr + "T00:00:00").setHours(0,0,0,0);
+  return Math.floor(ms / 86400000);
+}
+
+function getStatus(plant) {
+  const since = daysSince(log[plant.id]);
+  if (since === null) return { level:"unknown", label:"Never watered", pct:0 };
+  const left = plant.days - since;
+  if (left <= 0) return { level:"overdue", label:`${Math.abs(left)}d overdue`, pct:100 };
+  if (left <= 2)  return { level:"soon",    label:`Due in ${left}d`,           pct: Math.round((since/plant.days)*100) };
+  return              { level:"ok",       label:`${left}d left`,             pct: Math.round((since/plant.days)*100) };
+}
+
+function statusColor(level) {
+  return { ok:"#70b850", soon:"#d4a840", overdue:"#d46050", unknown:"#5a6a50" }[level];
+}
+
+function setSort(mode) {
+  sortMode = mode;
+  document.getElementById("sort-urgency").classList.toggle("active", mode==="urgency");
+  document.getElementById("sort-name").classList.toggle("active", mode==="name");
+  render();
+}
+
+function water(id) {
+  log[id] = today();
+  saveLog();
+  const plant = PLANTS.find(p => p.id === id);
+  showToast(`${plant.name} watered! 💧`);
+  // animate button
+  const btn = document.getElementById(`btn-${id}`);
+  if (btn) { btn.classList.add("watered"); setTimeout(()=>btn.classList.remove("watered"), 500); }
+  render();
+}
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove("show"), 2500);
+}
+
+function fmtDate(str) {
+  if (!str) return null;
+  const d = new Date(str + "T00:00:00");
+  return d.toLocaleDateString("en-GB", { day:"numeric", month:"short" });
+}
+
+function render() {
+  // date label
+  const now = new Date();
+  document.getElementById("date-label").textContent =
+    now.toLocaleDateString("en-GB", { month:"long", year:"numeric" }).toUpperCase();
+
+  // enrich
+  const enriched = PLANTS.map(p => ({ ...p, status: getStatus(p) }));
+
+  // sort
+  const order = { overdue:0, unknown:1, soon:2, ok:3 };
+  const sorted = [...enriched].sort((a,b) => {
+    if (sortMode === "urgency") {
+      const d = order[a.status.level] - order[b.status.level];
+      return d !== 0 ? d : a.name.localeCompare(b.name);
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  // banner
+  const overdue = enriched.filter(p=>p.status.level==="overdue").length;
+  const soon    = enriched.filter(p=>p.status.level==="soon").length;
+  const banner  = document.getElementById("banner");
+  if (overdue > 0) {
+    banner.className = "banner warn";
+    banner.innerHTML = `⚠ <span>${overdue} plant${overdue>1?"s":""} need water now</span>`;
+  } else if (soon > 0) {
+    banner.className = "banner soon";
+    banner.innerHTML = `⏳ <span>${soon} plant${soon>1?"s":""} due soon</span>`;
+  } else {
+    banner.className = "banner ok";
+    banner.innerHTML = `✓ <span>All plants on track</span>`;
+  }
+
+  // cards
+  const list = document.getElementById("list");
+  list.innerHTML = sorted.map((p, i) => {
+    const { level, label, pct } = p.status;
+    const col = statusColor(level);
+    const last = log[p.id] ? `Last watered: ${fmtDate(log[p.id])} · every ${p.days}d` : `Every ~${p.days} days`;
+    return `
+      <div class="card ${level}" style="animation-delay:${i*25}ms">
+        <div class="emoji">${p.emoji}</div>
+        <div class="info">
+          <div class="plant-name">${p.name}</div>
+          <div class="plant-latin">${p.latin}</div>
+          <div class="status-row">
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${pct}%;background:${col};opacity:0.75"></div>
+            </div>
+            <span class="status-label" style="color:${col}">${label}</span>
+          </div>
+          <div class="last-watered">${last}</div>
+        </div>
+        <button class="water-btn ${level==="overdue"?"overdue":""}" id="btn-${p.id}"
+          onclick="water(${p.id})" aria-label="Water ${p.name}">💧</button>
+      </div>`;
+  }).join("");
+}
+
+loadLog();
+render();
+// re-render every minute so countdown stays live
+setInterval(render, 60000);
+</script>
+</body>
+</html>
